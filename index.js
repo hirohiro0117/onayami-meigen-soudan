@@ -5,7 +5,7 @@ const line = require("@line/bot-sdk");
 const app = express();
 app.use(express.json());
 
-// LINE設定（トークンはRender の環境変数に設定）
+// LINEの設定（Renderの環境変数に設定済みのLINE_CHANNEL_ACCESS_TOKENを使用）
 const client = new line.Client({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
 });
@@ -19,13 +19,13 @@ app.post("/webhook", async (req, res) => {
     const replyToken = event.replyToken;
     if (!userMessage || !replyToken) return res.sendStatus(200);
 
-    // Difyへのリクエストに "user" パラメータを追加
+    // Dify APIに問い合わせ (必須パラメータ "user" を追加)
     const response = await axios.post(
       "https://api.dify.ai/v1/chat-messages",
       {
         inputs: {},
         query: userMessage,
-        user: "anonymous"   // ここで必須の "user" パラメータを渡します
+        user: "anonymous"  // 必須パラメータ。必要に応じてLINEのユーザーIDなどに変更可能
       },
       {
         headers: {
@@ -34,7 +34,7 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
-    // Difyの応答（応答がない場合のフォールバックメッセージも）
+    // Difyからの応答
     const replyMessage = response.data?.answer || "すみません、今はお答えできません…";
 
     // LINEに返信
