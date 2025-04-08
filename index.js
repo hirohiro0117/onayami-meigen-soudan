@@ -27,14 +27,12 @@ app.post("/webhook", async (req, res) => {
         query: userMessage
       },
       {
-        headers: {
-          Authorization: `Bearer ${process.env.DIFY_API_KEY}`
-        }
+        headers: { Authorization: `Bearer ${process.env.DIFY_API_KEY}` }
       }
     );
 
-    // Difyの応答（万が一answerが無い時はフォールバック文を返す）
-    const replyMessage = response.data?.answer || "すみません、今はお答えできません...";
+    // Difyの応答
+    const replyMessage = response.data?.answer || "すみません、今はお答えできません…";
 
     // LINEに返信
     await client.replyMessage(replyToken, {
