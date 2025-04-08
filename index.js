@@ -5,7 +5,7 @@ const line = require("@line/bot-sdk");
 const app = express();
 app.use(express.json());
 
-// LINE設定（トークンはRenderの環境変数に登録済み）
+// LINE設定（トークンは Render の環境変数に設定）
 const client = new line.Client({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
 });
@@ -15,13 +15,11 @@ app.post("/webhook", async (req, res) => {
     const event = req.body.events?.[0];
     if (!event) return res.sendStatus(200);
 
-    // ユーザーが送ったメッセージ
     const userMessage = event.message?.text;
-    // LINE返信用のトークン
     const replyToken = event.replyToken;
     if (!userMessage || !replyToken) return res.sendStatus(200);
 
-    // Difyへのリクエスト
+    // Difyに問い合わせ
     const response = await axios.post(
       "https://api.dify.ai/v1/chat-messages",
       {
@@ -35,8 +33,8 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
-    // Difyの応答
-    const replyMessage = response.data.answer || "すみません、今はお答えできません。";
+    // Difyの応答（万が一answerが無い時はフォールバック文を返す）
+    const replyMessage = response.data?.answer || "すみません、今はお答えできません...";
 
     // LINEに返信
     await client.replyMessage(replyToken, {
@@ -52,7 +50,7 @@ app.post("/webhook", async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("LINE ↔ Dify webhook is running!");
+  res.send("LINE × Dify Webhook is running!");
 });
 
 const port = process.env.PORT || 3000;
