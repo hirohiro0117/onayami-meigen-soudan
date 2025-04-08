@@ -1,31 +1,34 @@
-const express = require("express");
-const axios = require("axios");
-const line = require("@line/bot-sdk");
+import express from "express";
+import axios from "axios";
+import line from "@line/bot-sdk";
 
 const app = express();
 app.use(express.json());
 
-// LINE設定（トークンはRender の環境変数に設定）
+// LINEの設定（環境変数でアクセストークンを指定）
 const client = new line.Client({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
 });
 
+// POSTリクエストを受け付ける webhook エンドポイント
 app.post("/webhook", async (req, res) => {
   try {
+    // LINEからのイベントを取得（複数イベントが送信される可能性もありますが、ここでは最初の一件のみ対象）
     const event = req.body.events?.[0];
     if (!event) return res.sendStatus(200);
 
+    // ユーザーからのメッセージと返信用トークンの取得
     const userMessage = event.message?.text;
     const replyToken = event.replyToken;
     if (!userMessage || !replyToken) return res.sendStatus(200);
 
-    // Difyへのリクエストに "user" パラメータを追加
+    // Dify API に対してリクエスト（必須の "user" パラメータを含む）
     const response = await axios.post(
       "https://api.dify.ai/v1/chat-messages",
       {
         inputs: {},
         query: userMessage,
-        user: "anonymous"   // ここで必須の "user" パラメータを渡します
+        user: "anonymous"
       },
       {
         headers: {
@@ -34,10 +37,10 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
-    // Difyの応答（応答がない場合のフォールバックメッセージも）
+    // Dify からの応答が存在する場合はその内容を、ない場合はフォールバックのメッセージを使用
     const replyMessage = response.data?.answer || "すみません、今はお答えできません…";
 
-    // LINEに返信
+    // LINE に対して返信メッセージを送信
     await client.replyMessage(replyToken, {
       type: "text",
       text: replyMessage
@@ -50,10 +53,12 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
+// 簡易ヘルスチェック用のエンドポイント
 app.get("/", (req, res) => {
   res.send("LINE × Dify Webhook is running!");
 });
 
+// ポート番号は環境変数 PORT があればそちらを使用、なければ3000番ポートを使用
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`起動中: http://localhost:${port}`);
