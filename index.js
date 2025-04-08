@@ -1,47 +1,58 @@
 const express = require("express");
 const axios = require("axios");
-const line = require("@line/bot-sdk"); // LINE Bot SDKを追加！
+const line = require("@line/bot-sdk");
 
 const app = express();
 app.use(express.json());
 
-// LINE設定（トークンは環境変数に保存）
+// LINE設定（トークンはRenderの環境変数に登録済み）
 const client = new line.Client({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
 });
 
 app.post("/webhook", async (req, res) => {
-  const userMessage = req.body.events?.[0]?.message?.text;
-  const replyToken = req.body.events?.[0]?.replyToken;
-  if (!userMessage || !replyToken) return res.sendStatus(200);
+  try {
+    const event = req.body.events?.[0];
+    if (!event) return res.sendStatus(200);
 
-  // Difyへのリクエスト
-  const response = await axios.post(
-    "https://api.dify.ai/v1/chat-messages",
-    {
-      inputs: {},
-      query: userMessage
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.DIFY_API_KEY}`
+    // ユーザーが送ったメッセージ
+    const userMessage = event.message?.text;
+    // LINE返信用のトークン
+    const replyToken = event.replyToken;
+    if (!userMessage || !replyToken) return res.sendStatus(200);
+
+    // Difyへのリクエスト
+    const response = await axios.post(
+      "https://api.dify.ai/v1/chat-messages",
+      {
+        inputs: {},
+        query: userMessage
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.DIFY_API_KEY}`
+        }
       }
-    }
-  );
+    );
 
-  const replyMessage = response.data.answer;
+    // Difyの応答
+    const replyMessage = response.data.answer || "すみません、今はお答えできません。";
 
-  // LINEに返信
-  await client.replyMessage(replyToken, {
-    type: "text",
-    text: replyMessage
-  });
+    // LINEに返信
+    await client.replyMessage(replyToken, {
+      type: "text",
+      text: replyMessage
+    });
 
-  res.sendStatus(200);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("エラー発生:", error);
+    res.sendStatus(500);
+  }
 });
 
 app.get("/", (req, res) => {
-  res.send("LINE × Webhook × Dify 接続サーバー起動中！");
+  res.send("LINE ↔ Dify webhook is running!");
 });
 
 const port = process.env.PORT || 3000;
